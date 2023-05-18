@@ -19,9 +19,7 @@ class JustAudioPlugin extends JustAudioPlatform {
   @override
   Future<AudioPlayerPlatform> init(InitRequest request) async {
     if (players.containsKey(request.id)) {
-      throw PlatformException(
-          code: "error",
-          message: "Platform player ${request.id} already exists");
+      throw PlatformException(code: "error", message: "Platform player ${request.id} already exists");
     }
     final player = Html5AudioPlayer(id: request.id);
     players[request.id] = player;
@@ -29,16 +27,14 @@ class JustAudioPlugin extends JustAudioPlatform {
   }
 
   @override
-  Future<DisposePlayerResponse> disposePlayer(
-      DisposePlayerRequest request) async {
+  Future<DisposePlayerResponse> disposePlayer(DisposePlayerRequest request) async {
     await players[request.id]?.release();
     players.remove(request.id);
     return DisposePlayerResponse();
   }
 
   @override
-  Future<DisposeAllPlayersResponse> disposeAllPlayers(
-      DisposeAllPlayersRequest request) async {
+  Future<DisposeAllPlayersResponse> disposeAllPlayers(DisposeAllPlayersRequest request) async {
     for (var player in players.values) {
       await player.release();
     }
@@ -120,8 +116,7 @@ class Html5AudioPlayer extends JustAudioPlayer {
       _currentAudioSourcePlayer?.complete();
     });
     _audioElement.addEventListener('timeupdate', (event) {
-      _currentAudioSourcePlayer
-          ?.timeUpdated(_audioElement.currentTime as double);
+      _currentAudioSourcePlayer?.timeUpdated(_audioElement.currentTime as double);
     });
     _audioElement.addEventListener('loadstart', (event) {
       transition(ProcessingStateMessage.buffering);
@@ -144,9 +139,7 @@ class Html5AudioPlayer extends JustAudioPlayer {
   /// The current playback order, depending on whether shuffle mode is enabled.
   List<int> get order {
     final sequence = _audioSourcePlayer!.sequence;
-    return _shuffleModeEnabled
-        ? _audioSourcePlayer!.shuffleIndices
-        : List.generate(sequence.length, (i) => i);
+    return _shuffleModeEnabled ? _audioSourcePlayer!.shuffleIndices : List.generate(sequence.length, (i) => i);
   }
 
   /// gets the inverted order for the given order.
@@ -198,32 +191,27 @@ class Html5AudioPlayer extends JustAudioPlayer {
   }
 
   // TODO: Improve efficiency.
-  IndexedAudioSourcePlayer? get _currentAudioSourcePlayer =>
-      _audioSourcePlayer != null &&
-              _index != null &&
-              _audioSourcePlayer!.sequence.isNotEmpty &&
-              _index! < _audioSourcePlayer!.sequence.length
-          ? _audioSourcePlayer!.sequence[_index!]
-          : null;
+  IndexedAudioSourcePlayer? get _currentAudioSourcePlayer => _audioSourcePlayer != null &&
+          _index != null &&
+          _audioSourcePlayer!.sequence.isNotEmpty &&
+          _index! < _audioSourcePlayer!.sequence.length
+      ? _audioSourcePlayer!.sequence[_index!]
+      : null;
 
   @override
-  Stream<PlaybackEventMessage> get playbackEventMessageStream =>
-      _eventController.stream;
+  Stream<PlaybackEventMessage> get playbackEventMessageStream => _eventController.stream;
 
   @override
-  Stream<PlayerDataMessage> get playerDataMessageStream =>
-      _dataEventController.stream;
+  Stream<PlayerDataMessage> get playerDataMessageStream => _dataEventController.stream;
 
   @override
   Future<LoadResponse> load(LoadRequest request) async {
     _currentAudioSourcePlayer?.pause();
     _audioSourcePlayer = getAudioSource(request.audioSourceMessage);
     _index = request.initialIndex ?? 0;
-    final duration = await _currentAudioSourcePlayer!
-        .load(request.initialPosition?.inMilliseconds);
+    final duration = await _currentAudioSourcePlayer!.load(request.initialPosition?.inMilliseconds);
     if (request.initialPosition != null) {
-      await _currentAudioSourcePlayer!
-          .seek(request.initialPosition!.inMilliseconds);
+      await _currentAudioSourcePlayer!.seek(request.initialPosition!.inMilliseconds);
     }
     if (_playing) {
       _currentAudioSourcePlayer!.play();
@@ -233,8 +221,7 @@ class Html5AudioPlayer extends JustAudioPlayer {
 
   /// Loads audio from [uri] and returns the duration of the loaded audio if
   /// known.
-  Future<Duration?> loadUri(
-      final Uri uri, final Duration? initialPosition) async {
+  Future<Duration?> loadUri(final Uri uri, final Duration? initialPosition) async {
     transition(ProcessingStateMessage.loading);
     final src = uri.toString();
     if (src != _audioElement.src) {
@@ -249,17 +236,14 @@ class Html5AudioPlayer extends JustAudioPlayer {
       try {
         await _durationCompleter!.future;
       } on MediaError catch (e) {
-        throw PlatformException(
-            code: "${e.code}", message: "Failed to load URL");
+        throw PlatformException(code: "${e.code}", message: "Failed to load URL");
       } finally {
         _durationCompleter = null;
       }
     }
     transition(ProcessingStateMessage.ready);
     final seconds = _audioElement.duration;
-    return seconds.isFinite
-        ? Duration(milliseconds: (seconds * 1000).toInt())
-        : null;
+    return seconds.isFinite ? Duration(milliseconds: (seconds * 1000).toInt()) : null;
   }
 
   @override
@@ -285,6 +269,11 @@ class Html5AudioPlayer extends JustAudioPlayer {
   @override
   Future<SetVolumeResponse> setVolume(SetVolumeRequest request) async {
     _audioElement.volume = request.volume;
+    if (request.volume == 0) {
+      _audioElement.muted = true;
+    } else {
+      _audioElement.muted = false;
+    }
     return SetVolumeResponse();
   }
 
@@ -301,20 +290,17 @@ class Html5AudioPlayer extends JustAudioPlayer {
   }
 
   @override
-  Future<SetShuffleModeResponse> setShuffleMode(
-      SetShuffleModeRequest request) async {
+  Future<SetShuffleModeResponse> setShuffleMode(SetShuffleModeRequest request) async {
     _shuffleModeEnabled = request.shuffleMode == ShuffleModeMessage.all;
     return SetShuffleModeResponse();
   }
 
   @override
-  Future<SetShuffleOrderResponse> setShuffleOrder(
-      SetShuffleOrderRequest request) async {
+  Future<SetShuffleOrderResponse> setShuffleOrder(SetShuffleOrderRequest request) async {
     void internalSetShuffleOrder(AudioSourceMessage sourceMessage) {
       final audioSourcePlayer = _audioSourcePlayers[sourceMessage.id];
       if (audioSourcePlayer == null) return;
-      if (sourceMessage is ConcatenatingAudioSourceMessage &&
-          audioSourcePlayer is ConcatenatingAudioSourcePlayer) {
+      if (sourceMessage is ConcatenatingAudioSourceMessage && audioSourcePlayer is ConcatenatingAudioSourcePlayer) {
         audioSourcePlayer.setShuffleOrder(sourceMessage.shuffleOrder);
         for (var childMessage in sourceMessage.children) {
           internalSetShuffleOrder(childMessage);
@@ -352,12 +338,10 @@ class Html5AudioPlayer extends JustAudioPlayer {
       _audioSourcePlayers[playerId] as ConcatenatingAudioSourcePlayer?;
 
   @override
-  Future<ConcatenatingInsertAllResponse> concatenatingInsertAll(
-      ConcatenatingInsertAllRequest request) async {
+  Future<ConcatenatingInsertAllResponse> concatenatingInsertAll(ConcatenatingInsertAllRequest request) async {
     final wasNotEmpty = _audioSourcePlayer?.sequence.isNotEmpty ?? false;
     _concatenating(request.id)!.setShuffleOrder(request.shuffleOrder);
-    _concatenating(request.id)!
-        .insertAll(request.index, getAudioSources(request.children));
+    _concatenating(request.id)!.insertAll(request.index, getAudioSources(request.children));
     if (_index != null && wasNotEmpty && request.index <= _index!) {
       _index = _index! + request.children.length;
     }
@@ -367,18 +351,13 @@ class Html5AudioPlayer extends JustAudioPlayer {
   }
 
   @override
-  Future<ConcatenatingRemoveRangeResponse> concatenatingRemoveRange(
-      ConcatenatingRemoveRangeRequest request) async {
-    if (_index != null &&
-        _index! >= request.startIndex &&
-        _index! < request.endIndex &&
-        _playing) {
+  Future<ConcatenatingRemoveRangeResponse> concatenatingRemoveRange(ConcatenatingRemoveRangeRequest request) async {
+    if (_index != null && _index! >= request.startIndex && _index! < request.endIndex && _playing) {
       // Pause if removing current item
       _currentAudioSourcePlayer!.pause();
     }
     _concatenating(request.id)!.setShuffleOrder(request.shuffleOrder);
-    _concatenating(request.id)!
-        .removeRange(request.startIndex, request.endIndex);
+    _concatenating(request.id)!.removeRange(request.startIndex, request.endIndex);
     if (_index != null) {
       if (_index! >= request.startIndex && _index! < request.endIndex) {
         // Skip backward if there's nothing after this
@@ -405,18 +384,15 @@ class Html5AudioPlayer extends JustAudioPlayer {
   }
 
   @override
-  Future<ConcatenatingMoveResponse> concatenatingMove(
-      ConcatenatingMoveRequest request) async {
+  Future<ConcatenatingMoveResponse> concatenatingMove(ConcatenatingMoveRequest request) async {
     _concatenating(request.id)!.setShuffleOrder(request.shuffleOrder);
     _concatenating(request.id)!.move(request.currentIndex, request.newIndex);
     if (_index != null) {
       if (request.currentIndex == _index) {
         _index = request.newIndex;
-      } else if (request.currentIndex < _index! &&
-          request.newIndex >= _index!) {
+      } else if (request.currentIndex < _index! && request.newIndex >= _index!) {
         _index = _index! - 1;
-      } else if (request.currentIndex > _index! &&
-          request.newIndex <= _index!) {
+      } else if (request.currentIndex > _index! && request.newIndex <= _index!) {
         _index = _index! + 1;
       }
     }
@@ -425,39 +401,33 @@ class Html5AudioPlayer extends JustAudioPlayer {
   }
 
   @override
-  Future<SetAndroidAudioAttributesResponse> setAndroidAudioAttributes(
-      SetAndroidAudioAttributesRequest request) async {
+  Future<SetAndroidAudioAttributesResponse> setAndroidAudioAttributes(SetAndroidAudioAttributesRequest request) async {
     return SetAndroidAudioAttributesResponse();
   }
 
   @override
-  Future<SetAutomaticallyWaitsToMinimizeStallingResponse>
-      setAutomaticallyWaitsToMinimizeStalling(
-          SetAutomaticallyWaitsToMinimizeStallingRequest request) async {
+  Future<SetAutomaticallyWaitsToMinimizeStallingResponse> setAutomaticallyWaitsToMinimizeStalling(
+      SetAutomaticallyWaitsToMinimizeStallingRequest request) async {
     return SetAutomaticallyWaitsToMinimizeStallingResponse();
   }
 
   @override
   Future<SetCanUseNetworkResourcesForLiveStreamingWhilePausedResponse>
       setCanUseNetworkResourcesForLiveStreamingWhilePaused(
-          SetCanUseNetworkResourcesForLiveStreamingWhilePausedRequest
-              request) async {
+          SetCanUseNetworkResourcesForLiveStreamingWhilePausedRequest request) async {
     return SetCanUseNetworkResourcesForLiveStreamingWhilePausedResponse();
   }
 
   @override
-  Future<SetPreferredPeakBitRateResponse> setPreferredPeakBitRate(
-      SetPreferredPeakBitRateRequest request) async {
+  Future<SetPreferredPeakBitRateResponse> setPreferredPeakBitRate(SetPreferredPeakBitRateRequest request) async {
     return SetPreferredPeakBitRateResponse();
   }
 
   @override
-  Duration getCurrentPosition() =>
-      _currentAudioSourcePlayer?.position ?? Duration.zero;
+  Duration getCurrentPosition() => _currentAudioSourcePlayer?.position ?? Duration.zero;
 
   @override
-  Duration getBufferedPosition() =>
-      _currentAudioSourcePlayer?.bufferedPosition ?? Duration.zero;
+  Duration getBufferedPosition() => _currentAudioSourcePlayer?.bufferedPosition ?? Duration.zero;
 
   @override
   Duration? getDuration() => _currentAudioSourcePlayer?.duration;
@@ -490,21 +460,17 @@ class Html5AudioPlayer extends JustAudioPlayer {
   /// Converts an audio source message to a player.
   AudioSourcePlayer decodeAudioSource(AudioSourceMessage audioSourceMessage) {
     if (audioSourceMessage is ProgressiveAudioSourceMessage) {
-      return ProgressiveAudioSourcePlayer(this, audioSourceMessage.id,
-          Uri.parse(audioSourceMessage.uri), audioSourceMessage.headers);
+      return ProgressiveAudioSourcePlayer(
+          this, audioSourceMessage.id, Uri.parse(audioSourceMessage.uri), audioSourceMessage.headers);
     } else if (audioSourceMessage is DashAudioSourceMessage) {
-      return DashAudioSourcePlayer(this, audioSourceMessage.id,
-          Uri.parse(audioSourceMessage.uri), audioSourceMessage.headers);
+      return DashAudioSourcePlayer(
+          this, audioSourceMessage.id, Uri.parse(audioSourceMessage.uri), audioSourceMessage.headers);
     } else if (audioSourceMessage is HlsAudioSourceMessage) {
-      return HlsAudioSourcePlayer(this, audioSourceMessage.id,
-          Uri.parse(audioSourceMessage.uri), audioSourceMessage.headers);
+      return HlsAudioSourcePlayer(
+          this, audioSourceMessage.id, Uri.parse(audioSourceMessage.uri), audioSourceMessage.headers);
     } else if (audioSourceMessage is ConcatenatingAudioSourceMessage) {
-      return ConcatenatingAudioSourcePlayer(
-          this,
-          audioSourceMessage.id,
-          getAudioSources(audioSourceMessage.children),
-          audioSourceMessage.useLazyPreparation,
-          audioSourceMessage.shuffleOrder);
+      return ConcatenatingAudioSourcePlayer(this, audioSourceMessage.id, getAudioSources(audioSourceMessage.children),
+          audioSourceMessage.useLazyPreparation, audioSourceMessage.shuffleOrder);
     } else if (audioSourceMessage is ClippingAudioSourceMessage) {
       return ClippingAudioSourcePlayer(
           this,
@@ -513,8 +479,8 @@ class Html5AudioPlayer extends JustAudioPlayer {
           audioSourceMessage.start,
           audioSourceMessage.end);
     } else if (audioSourceMessage is LoopingAudioSourceMessage) {
-      return LoopingAudioSourcePlayer(this, audioSourceMessage.id,
-          getAudioSource(audioSourceMessage.child), audioSourceMessage.count);
+      return LoopingAudioSourcePlayer(
+          this, audioSourceMessage.id, getAudioSource(audioSourceMessage.child), audioSourceMessage.count);
     } else {
       throw Exception("Unknown AudioSource type: $audioSourceMessage");
     }
@@ -540,8 +506,7 @@ abstract class AudioSourcePlayer {
 
 /// A player for an [IndexedAudioSourceMessage].
 abstract class IndexedAudioSourcePlayer extends AudioSourcePlayer {
-  IndexedAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id)
-      : super(html5AudioPlayer, id);
+  IndexedAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id) : super(html5AudioPlayer, id);
 
   /// Loads the audio for the underlying audio source.
   Future<Duration?> load([int? initialPosition]);
@@ -591,8 +556,7 @@ abstract class UriAudioSourcePlayer extends IndexedAudioSourcePlayer {
   Completer<dynamic>? _completer;
   int? _initialPos;
 
-  UriAudioSourcePlayer(
-      Html5AudioPlayer html5AudioPlayer, String id, this.uri, this.headers)
+  UriAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, this.uri, this.headers)
       : super(html5AudioPlayer, id);
 
   @override
@@ -605,11 +569,8 @@ abstract class UriAudioSourcePlayer extends IndexedAudioSourcePlayer {
   Future<Duration?> load([int? initialPosition]) async {
     _initialPos = initialPosition;
     _resumePos = (initialPosition ?? 0) / 1000.0;
-    _duration = await html5AudioPlayer.loadUri(
-        uri,
-        initialPosition != null
-            ? Duration(milliseconds: initialPosition)
-            : null);
+    _duration =
+        await html5AudioPlayer.loadUri(uri, initialPosition != null ? Duration(milliseconds: initialPosition) : null);
     _initialPos = null;
     return _duration;
   }
@@ -666,11 +627,7 @@ abstract class UriAudioSourcePlayer extends IndexedAudioSourcePlayer {
   @override
   Duration get bufferedPosition {
     if (_audioElement.buffered.length > 0) {
-      return Duration(
-          milliseconds:
-              (_audioElement.buffered.end(_audioElement.buffered.length - 1) *
-                      1000)
-                  .toInt());
+      return Duration(milliseconds: (_audioElement.buffered.end(_audioElement.buffered.length - 1) * 1000).toInt());
     } else {
       return Duration.zero;
     }
@@ -679,22 +636,19 @@ abstract class UriAudioSourcePlayer extends IndexedAudioSourcePlayer {
 
 /// A player for a [ProgressiveAudioSourceMessage].
 class ProgressiveAudioSourcePlayer extends UriAudioSourcePlayer {
-  ProgressiveAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id,
-      Uri uri, Map<String, String>? headers)
+  ProgressiveAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, Uri uri, Map<String, String>? headers)
       : super(html5AudioPlayer, id, uri, headers);
 }
 
 /// A player for a [DashAudioSourceMessage].
 class DashAudioSourcePlayer extends UriAudioSourcePlayer {
-  DashAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, Uri uri,
-      Map<String, String>? headers)
+  DashAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, Uri uri, Map<String, String>? headers)
       : super(html5AudioPlayer, id, uri, headers);
 }
 
 /// A player for a [HlsAudioSourceMessage].
 class HlsAudioSourcePlayer extends UriAudioSourcePlayer {
-  HlsAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, Uri uri,
-      Map<String, String>? headers)
+  HlsAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, Uri uri, Map<String, String>? headers)
       : super(html5AudioPlayer, id, uri, headers);
 }
 
@@ -707,14 +661,13 @@ class ConcatenatingAudioSourcePlayer extends AudioSourcePlayer {
   final bool useLazyPreparation;
   List<int> _shuffleOrder;
 
-  ConcatenatingAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id,
-      this.audioSourcePlayers, this.useLazyPreparation, List<int> shuffleOrder)
+  ConcatenatingAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, this.audioSourcePlayers,
+      this.useLazyPreparation, List<int> shuffleOrder)
       : _shuffleOrder = shuffleOrder,
         super(html5AudioPlayer, id);
 
   @override
-  List<IndexedAudioSourcePlayer> get sequence =>
-      audioSourcePlayers.expand((p) => p.sequence).toList();
+  List<IndexedAudioSourcePlayer> get sequence => audioSourcePlayers.expand((p) => p.sequence).toList();
 
   @override
   List<int> get shuffleIndices {
@@ -759,8 +712,7 @@ class ConcatenatingAudioSourcePlayer extends AudioSourcePlayer {
 
   /// Moves a child player from [currentIndex] to [newIndex].
   void move(int currentIndex, int newIndex) {
-    audioSourcePlayers.insert(
-        newIndex, audioSourcePlayers.removeAt(currentIndex));
+    audioSourcePlayers.insert(newIndex, audioSourcePlayers.removeAt(currentIndex));
   }
 }
 
@@ -774,8 +726,7 @@ class ClippingAudioSourcePlayer extends IndexedAudioSourcePlayer {
   Duration? _duration;
   int? _initialPos;
 
-  ClippingAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id,
-      this.audioSourcePlayer, this.start, this.end)
+  ClippingAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, this.audioSourcePlayer, this.start, this.end)
       : super(html5AudioPlayer, id);
 
   @override
@@ -790,26 +741,22 @@ class ClippingAudioSourcePlayer extends IndexedAudioSourcePlayer {
   Future<Duration?> load([int? initialPosition]) async {
     initialPosition ??= 0;
     _initialPos = initialPosition;
-    final absoluteInitialPosition =
-        effectiveStart.inMilliseconds + initialPosition;
+    final absoluteInitialPosition = effectiveStart.inMilliseconds + initialPosition;
     _resumePos = absoluteInitialPosition / 1000.0;
-    final fullDuration = (await html5AudioPlayer.loadUri(audioSourcePlayer.uri,
-        Duration(milliseconds: absoluteInitialPosition)));
+    final fullDuration =
+        (await html5AudioPlayer.loadUri(audioSourcePlayer.uri, Duration(milliseconds: absoluteInitialPosition)));
     _initialPos = null;
     if (fullDuration != null) {
       _duration = Duration(
-          milliseconds: min((end ?? fullDuration).inMilliseconds,
-                  fullDuration.inMilliseconds) -
-              effectiveStart.inMilliseconds);
+          milliseconds:
+              min((end ?? fullDuration).inMilliseconds, fullDuration.inMilliseconds) - effectiveStart.inMilliseconds);
     } else if (end != null) {
-      _duration = Duration(
-          milliseconds: end!.inMilliseconds - effectiveStart.inMilliseconds);
+      _duration = Duration(milliseconds: end!.inMilliseconds - effectiveStart.inMilliseconds);
     }
     return _duration;
   }
 
-  double get remaining =>
-      end!.inMilliseconds / 1000 - _audioElement.currentTime;
+  double get remaining => end!.inMilliseconds / 1000 - _audioElement.currentTime;
 
   @override
   Future<void> play() async {
@@ -837,8 +784,7 @@ class ClippingAudioSourcePlayer extends IndexedAudioSourcePlayer {
   @override
   Future<void> seek(int position) async {
     _interruptPlay(ClipInterruptReason.seek);
-    _audioElement.currentTime =
-        _resumePos = effectiveStart.inMilliseconds / 1000.0 + position / 1000.0;
+    _audioElement.currentTime = _resumePos = effectiveStart.inMilliseconds / 1000.0 + position / 1000.0;
   }
 
   @override
@@ -875,8 +821,7 @@ class ClippingAudioSourcePlayer extends IndexedAudioSourcePlayer {
   @override
   Duration get bufferedPosition {
     if (_audioElement.buffered.length > 0) {
-      var seconds =
-          _audioElement.buffered.end(_audioElement.buffered.length - 1);
+      var seconds = _audioElement.buffered.end(_audioElement.buffered.length - 1);
       var position = Duration(milliseconds: (seconds * 1000).toInt());
       position -= effectiveStart;
       if (position < Duration.zero) {
@@ -909,15 +854,12 @@ class LoopingAudioSourcePlayer extends AudioSourcePlayer {
   /// The number of times to loop.
   final int count;
 
-  LoopingAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id,
-      this.audioSourcePlayer, this.count)
+  LoopingAudioSourcePlayer(Html5AudioPlayer html5AudioPlayer, String id, this.audioSourcePlayer, this.count)
       : super(html5AudioPlayer, id);
 
   @override
   List<IndexedAudioSourcePlayer> get sequence =>
-      List.generate(count, (i) => audioSourcePlayer)
-          .expand((p) => p.sequence)
-          .toList();
+      List.generate(count, (i) => audioSourcePlayer).expand((p) => p.sequence).toList();
 
   @override
   List<int> get shuffleIndices {
